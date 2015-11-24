@@ -167,6 +167,38 @@
   }
 }
 
+- (void)testNodeBufferWithTheTiniestGifEverBecauseWhyNot {
+    /*
+     Test data generated with this node program:
+     
+         var msgpack = require('msgpack-js');
+         var bops = require('bops')
+         
+         // See http://probablyprogramming.com/2009/03/15/the-tiniest-gif-ever for the 26 byte GIF
+         var buffer = bops.from('R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', 'base64');
+         var initial = {start: true, 'payload': buffer};
+         var encoded = msgpack.encode(initial);
+         
+         console.log( encoded);
+     */
+    
+    NSString *hex = @"82a57374617274c3a77061796c6f6164d8001a4749463839610100010000ff002c00000000010001000002003b";
+    NSData *data = [NSData mp_dataFromHexString:hex];
+    MPMessagePackReader *reader = [[MPMessagePackReader alloc] initWithData:data];
+    NSError *error = nil;
+    
+    id obj = [reader readObject:&error];
+    
+    NSData *payload = [obj objectForKey:@"payload"];
+
+    NSData *headerData = [payload subdataWithRange:NSMakeRange(0, 6)];
+    NSString* header = [[NSString alloc] initWithData:headerData encoding:NSUTF8StringEncoding];
+    
+    XCTAssertEqualObjects(@"GIF89a", header);
+}
+
+
+
 // For testing a compatibility issue with go msgpack
 //- (void)testMessage {
 //  NSString *s = @"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";

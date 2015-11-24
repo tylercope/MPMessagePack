@@ -114,7 +114,29 @@
       uint32_t length = obj.as.map_size;
       return [self readDictionaryFromContext:context length:length error:error];
     }
-      
+
+    // Supports reading creationix/msgpack-js extension for Node binary Buffers with length up to (2^16)-1 bytes.
+    case CMP_TYPE_FIXEXT16: {
+        NSMutableData *lengthData = [NSMutableData dataWithLength:1];
+        bool readSuccess = context->read(context, [lengthData mutableBytes], 1);
+        if (!readSuccess) {
+            return [self returnNilWithErrorCode:202 description:@"Unable to read fixext16 length" error:error];
+        }
+        
+        [lengthData appendBytes:&obj.as.u8 length:1];
+        
+        const uint16_t *bytes = [lengthData bytes]; // pointer to the bytes in data
+        int length = bytes[0];
+        
+        // now read length number of bytes
+        NSMutableData *data = [NSMutableData dataWithLength:length];
+        readSuccess = context->read(context, [data mutableBytes], length);
+        if (!readSuccess) {
+            return [self returnNilWithErrorCode:206 description:@"Unable to read fixext16" error:error];
+        }
+        return data;
+    }
+          
     case CMP_TYPE_EXT8:
     case CMP_TYPE_EXT16:
     case CMP_TYPE_EXT32:
@@ -122,7 +144,6 @@
     case CMP_TYPE_FIXEXT2:
     case CMP_TYPE_FIXEXT4:
     case CMP_TYPE_FIXEXT8:
-    case CMP_TYPE_FIXEXT16:
       
     default: {
       return [self returnNilWithErrorCode:201 description:[NSString stringWithFormat:@"Unsupported object type: %@", @(obj.type)] error:error];
